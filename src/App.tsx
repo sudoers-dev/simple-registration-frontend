@@ -4,7 +4,7 @@ import { RegistrationChart } from "@/components/RegistrationChart"
 import { RegistrantsList } from "@/components/RegistrantsList"
 
 function App() {
-  const [totalRegistrations, setTotalRegistrations] = useState(0)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   return (
     <main className="min-h-screen bg-background">
@@ -18,7 +18,7 @@ function App() {
 
         {/* Left — Registration Form */}
         <aside className="w-[420px] shrink-0 border-r overflow-y-auto p-6">
-          <RegistrationForm onSubmit={() => setTotalRegistrations((n) => n + 1)} />
+          <RegistrationForm onSubmit={() => setRefreshKey((n) => n + 1)} />
         </aside>
 
         {/* Right — Chart + Table */}
@@ -26,12 +26,12 @@ function App() {
 
           {/* Chart strip */}
           <div className="border-b p-6 shrink-0">
-            <RegistrationChart newCount={totalRegistrations} />
+            <RegistrationChart refreshKey={refreshKey} />
           </div>
 
           {/* Table — fills remaining height */}
           <div className="flex-1 overflow-y-auto p-6">
-            <RegistrantsList />
+            <RegistrantsList refreshKey={refreshKey} />
           </div>
         </div>
       </div>

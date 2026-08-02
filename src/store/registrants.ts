@@ -10,52 +10,104 @@ export type Registrant = {
   dob: string
   registeredAt: string
   status: Status
+  enteredBy: string
 }
 
-const SEED: Registrant[] = [
-  { id: "1", firstName: "Maria", lastName: "Santos", username: "msantos", email: "maria.santos@example.com", mobile: "9171234567", dob: "1990-03-15", registeredAt: "2024-11-01", status: "Active" },
-  { id: "2", firstName: "Juan", lastName: "dela Cruz", username: "jdelacruz", email: "juan.delacruz@example.com", mobile: "9289876543", dob: "1985-07-22", registeredAt: "2024-11-14", status: "Inactive" },
-  { id: "3", firstName: "Ana", lastName: "Reyes", username: "areyes", email: "ana.reyes@example.com", mobile: "9351122334", dob: "1998-01-09", registeredAt: "2024-12-03", status: "Pending" },
-  { id: "4", firstName: "Carlo", lastName: "Mendoza", username: "cmendoza", email: "carlo.mendoza@example.com", mobile: "9064455667", dob: "1993-09-30", registeredAt: "2025-01-07", status: "Active" },
-  { id: "5", firstName: "Liza", lastName: "Garcia", username: "lgarcia", email: "liza.garcia@example.com", mobile: "9177788990", dob: "2000-05-18", registeredAt: "2025-02-20", status: "Active" },
-]
-
-let _store: Registrant[] = [...SEED]
-type Listener = () => void
-const listeners = new Set<Listener>()
-
-function notify() {
-  listeners.forEach((fn) => fn())
+export type CreateRegistrantPayload = {
+  firstName: string
+  lastName: string
+  username: string
+  email: string
+  mobile: string
+  dob: string
+  password: string
 }
 
-export function subscribe(fn: Listener) {
-  listeners.add(fn)
-  return () => listeners.delete(fn)
+export type UpdateRegistrantPayload = Partial<{
+  firstName: string
+  lastName: string
+  username: string
+  email: string
+  mobile: string
+  dob: string
+  status: Status
+}>
+
+const BASE = "http://localhost:8000/user"
+
+// Map backend snake_case → frontend camelCase
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapProfile(p: any): Registrant {
+  return {
+    id: p.id,
+    firstName: p.first_name,
+    lastName: p.last_name,
+    username: p.username,
+    email: p.email,
+    mobile: p.mobile_number,
+    dob: p.date_of_birth,
+    registeredAt: p.created_at?.slice(0, 10) ?? "",
+    status: p.status as Status,
+    enteredBy: p.entered_by ?? "",
+  }
 }
 
-export function getRegistrants() {
-  return _store
+export async function fetchRegistrants(query?: string): Promise<Registrant[]> {
+  const url = query
+    ? `${BASE}/profiles/?q=${encodeURIComponent(query)}`
+    : `${BASE}/profiles/`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error("Failed to fetch registrants")
+  const data = await res.json()
+  return data.map(mapProfile)
 }
 
-export function addRegistrant(r: Omit<Registrant, "id" | "registeredAt" | "status">) {
-  _store = [
-    ..._store,
-    {
-      ...r,
-      id: crypto.randomUUID(),
-      registeredAt: new Date().toISOString().slice(0, 10),
-      status: "Pending",
-    },
-  ]
-  notify()
+export async function createRegistrant(payload: CreateRegistrantPayload): Promise<void> {
+  const res = await fetch(`${BASE}/register/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      username: payload.username,
+      first_name: payload.firstName,
+      last_name: payload.lastName,
+      date_of_birth: payload.dob,
+      mobile_number: payload.mobile,
+      email: payload.email,
+      password: payload.password,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw Object.assign(new Error("Registration failed"), { detail: err })
+  }
 }
 
-export function updateRegistrant(id: string, patch: Partial<Omit<Registrant, "id">>) {
-  _store = _store.map((r) => (r.id === id ? { ...r, ...patch } : r))
-  notify()
+export async function updateRegistrant(
+  id: string,
+  patch: UpdateRegistrantPayload
+): Promise<Registrant> {
+  const body: Record<string, string> = {}
+  if (patch.firstName !== undefined) body.first_name = patch.firstName
+  if (patch.lastName !== undefined) body.last_name = patch.lastName
+  if (patch.username !== undefined) body.username = patch.username
+  if (patch.email !== undefined) body.email = patch.email
+  if (patch.mobile !== undefined) body.mobile_number = patch.mobile
+  if (patch.dob !== undefined) body.date_of_birth = patch.dob
+  if (patch.status !== undefined) body.status = patch.status
+
+  const res = await fetch(`${BASE}/profiles/${id}/`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw Object.assign(new Error("Update failed"), { detail: err })
+  }
+  return mapProfile(await res.json())
 }
 
-export function deleteRegistrant(id: string) {
-  _store = _store.filter((r) => r.id !== id)
-  notify()
+export async function deleteRegistrant(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/profiles/${id}/`, { method: "DELETE" })
+  if (!res.ok) throw new Error("Delete failed")
 }
