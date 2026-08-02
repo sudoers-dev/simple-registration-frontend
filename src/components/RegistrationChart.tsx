@@ -36,13 +36,13 @@ export function RegistrationChart({ newCount }: Props) {
   }, [newCount])
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
+    <Card className="w-full">
       <CardHeader>
         <CardTitle>Weekly Registrations</CardTitle>
         <CardDescription>Total number of registrations per week</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig} className="h-64 w-full">
+        <ChartContainer config={chartConfig} className="h-44 w-full">
           <BarChart data={data} accessibilityLayer>
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
