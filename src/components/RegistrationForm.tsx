@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Eye, EyeOff, UserRound } from "lucide-react"
+import { addRegistrant } from "@/store/registrants"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -146,13 +147,21 @@ export function RegistrationForm({ onSubmit }: Props) {
     )
     setTouched(allTouched)
     if (!isFormValid(fields)) return
+    addRegistrant({
+      firstName: fields.firstName,
+      lastName: fields.lastName,
+      username: fields.username,
+      email: fields.email,
+      mobile: fields.mobile,
+      dob: fields.dob,
+    })
     setSubmitted(true)
     onSubmit()
   }
 
   if (submitted) {
     return (
-      <Card className="w-full max-w-2xl mx-auto">
+      <Card className="w-full">
         <CardContent className="py-10 flex flex-col items-center gap-3 text-center">
           <div className="size-14 rounded-full bg-primary/10 flex items-center justify-center">
             <UserRound className="size-7 text-primary" />
@@ -168,7 +177,7 @@ export function RegistrationForm({ onSubmit }: Props) {
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
+    <Card className="w-full">
       <CardHeader>
         <CardTitle>Create Account</CardTitle>
         <CardDescription>Fill in the details below to register.</CardDescription>
