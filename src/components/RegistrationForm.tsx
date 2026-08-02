@@ -1,12 +1,13 @@
 import { useState } from "react"
 import { Eye, EyeOff, UserRound } from "lucide-react"
-import { addRegistrant } from "@/store/registrants"
+import { createRegistrant } from "@/store/registrants"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupButton } from "@/components/ui/input-group"
 import { Separator } from "@/components/ui/separator"
+import { Spinner } from "@/components/ui/spinner"
 
 type Fields = {
   firstName: string
@@ -132,6 +133,9 @@ export function RegistrationForm({ onSubmit }: Props) {
   const [touched, setTouched] = useState<Touched>({})
   const [submitted, setSubmitted] = useState(false)
 
+  const [submitting, setSubmitting] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
+
   const errors = validate(fields, touched)
 
   const set = (k: keyof Fields) => (v: string) =>
@@ -139,7 +143,7 @@ export function RegistrationForm({ onSubmit }: Props) {
   const touch = (k: keyof Fields) => () =>
     setTouched((t) => ({ ...t, [k]: true }))
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const allTouched = Object.keys(fields).reduce(
       (acc, k) => ({ ...acc, [k]: true }),
@@ -147,16 +151,31 @@ export function RegistrationForm({ onSubmit }: Props) {
     )
     setTouched(allTouched)
     if (!isFormValid(fields)) return
-    addRegistrant({
-      firstName: fields.firstName,
-      lastName: fields.lastName,
-      username: fields.username,
-      email: fields.email,
-      mobile: fields.mobile,
-      dob: fields.dob,
-    })
-    setSubmitted(true)
-    onSubmit()
+    setSubmitting(true)
+    setApiError(null)
+    try {
+      await createRegistrant({
+        firstName: fields.firstName,
+        lastName: fields.lastName,
+        username: fields.username,
+        email: fields.email,
+        mobile: fields.mobile,
+        dob: fields.dob,
+        password: fields.password,
+      })
+      setSubmitted(true)
+      onSubmit()
+    } catch (err: unknown) {
+      const detail = (err as { detail?: Record<string, string[]> }).detail
+      if (detail) {
+        const first = Object.values(detail).flat()[0]
+        setApiError(first ?? "Registration failed. Please try again.")
+      } else {
+        setApiError("Registration failed. Please try again.")
+      }
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (submitted) {
@@ -306,6 +325,10 @@ export function RegistrationForm({ onSubmit }: Props) {
             />
           </div>
 
+          {apiError && (
+            <p role="alert" className="mt-3 text-sm text-destructive">{apiError}</p>
+          )}
+
           {/* Required note */}
           <p className="mt-4 text-xs text-muted-foreground">
             <span className="text-destructive">*</span> Required fields
@@ -316,8 +339,9 @@ export function RegistrationForm({ onSubmit }: Props) {
               type="submit"
               size="lg"
               className="w-full sm:w-auto"
-              disabled={!isFormValid(fields)}
+              disabled={!isFormValid(fields) || submitting}
             >
+              {submitting ? <Spinner className="mr-1" /> : null}
               Create Account
             </Button>
           </div>
